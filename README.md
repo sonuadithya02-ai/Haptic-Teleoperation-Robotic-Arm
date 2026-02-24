@@ -6,6 +6,15 @@ A low-latency, internet-enabled teleoperation system designed for precision remo
 This project demonstrates a full-stack robotics architecture integrating embedded systems, real-time communication, force feedback safety logic, and WebRTC-based monitoring.
 
 ---
+
+## 📸 Hardware Prototype
+
+![Hardware Prototype](media/hardware1.jpg)
+![Hardware Prototype](media/hardware2.jpg)
+![Hardware Prototype](media/hardware3.jpg)
+
+---
+
 ## 🚀 Overview
 
 This system implements a real-time master–slave robotic architecture where human hand movements are captured, transmitted over a network, and replicated by a remote robotic arm with synchronized feedback.
@@ -197,5 +206,5 @@ This architecture is designed for scalability into:
 ---
 ## 👨‍💻 Author
 
-Molanguru Sonu Adithya
-Embedded Systems & Robotics Engineer
+Molanguru Sonu Adithya 
+Embedded Systems & Robotics Engineer 
