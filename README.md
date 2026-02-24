@@ -26,6 +26,9 @@ The design prioritizes responsiveness, stability, and modular scalability.
 
 ---
 ## 🧠 System Architecture
+
+```text
+
 Operator (Master)
    ↓
 ESP32 + ADS1115 (Motion Capture)
@@ -39,6 +42,7 @@ Raspberry Pi (Slave Gateway)
 ESP32 (Actuation Control)
    ↓
 Robotic Arm (MG996R + Stepper)
+```
 
 ---
 ## ⚙️ Core Components
