@@ -12,15 +12,15 @@ This system implements a real-time master–slave robotic architecture where hum
 
 Unlike basic teleoperation demos, this platform includes:
 
-Bidirectional communication
+- Bidirectional communication
 
-Real-time haptic lock mechanism
+- Real-time haptic lock mechanism
 
-Emergency force-based interruption
+- Emergency force-based interruption
 
-Network latency measurement
+- Network latency measurement
 
-Web-based monitoring dashboard
+- Web-based monitoring dashboard
 
 The design prioritizes responsiveness, stability, and modular scalability.
 
@@ -48,39 +48,39 @@ Robotic Arm (MG996R + Stepper)
 ## ⚙️ Core Components
 ### 🔹 Master Side
 
-Precision potentiometer-based motion sensing
+- Precision potentiometer-based motion sensing
 
-ADS1115 16-bit ADC
+- ADS1115 16-bit ADC
 
-ESP32 for real-time input processing
+- ESP32 for real-time input processing
 
-MG90S servo-based haptic feedback mechanism
+- MG90S servo-based haptic feedback mechanism
 
-Raspberry Pi for network communication
+- Raspberry Pi for network communication
 
 ### 🔹 Slave Side
 
-MG996R high-torque servo actuators
+- MG996R high-torque servo actuators
 
-TB6600 stepper motor driver for base articulation
+- TB6600 stepper motor driver for base articulation
 
-Dual Force-Sensing Resistors (FSR) for impact detection
+- Dual Force-Sensing Resistors (FSR) for impact detection
 
-ESP32 for low-level control
+- ESP32 for low-level control
 
-Raspberry Pi as communication bridge
+- Raspberry Pi as communication bridge
 
 ### 🔁 Communication Layer
 
-WebRTC-based peer-to-peer data channel
+- WebRTC-based peer-to-peer data channel
 
-Real-time packet transmission
+- Real-time packet transmission
 
-App-layer RTT measurement (PING/PONG mechanism)
+- App-layer RTT measurement (PING/PONG mechanism)
 
-Throughput estimation (TX/RX kbps)
+- Throughput estimation (TX/RX kbps)
 
-Sequence-based loss detection
+- Sequence-based loss detection
 
 The system enforces packet freshness to prevent motion queuing and ensures immediate response to operator input.
 
@@ -89,15 +89,15 @@ The system enforces packet freshness to prevent motion queuing and ensures immed
 
 The platform implements a force-based safety mechanism:
 
-FSR sensors continuously monitor contact force
+- FSR sensors continuously monitor contact force
 
-Threshold breach triggers immediate actuator freeze
+- Threshold breach triggers immediate actuator freeze
 
-Emergency signal sent upstream
+- Emergency signal sent upstream
 
-Master-side haptic lock engaged
+- Master-side haptic lock engaged
 
-Manual confirmation required for reactivation
+- Manual confirmation required for reactivation
 
 This architecture mimics reflex-based safety systems used in advanced teleoperation environments.
 
@@ -106,13 +106,13 @@ This architecture mimics reflex-based safety systems used in advanced teleoperat
 
 The WebRTC dashboard provides:
 
-RTT (Round Trip Time)
+- RTT (Round Trip Time)
 
-Data channel throughput
+- Data channel throughput
 
-Packet loss percentage
+- Packet loss percentage
 
-ICE connection state
+- ICE connection state
 
 This allows continuous monitoring of network stability during remote operation.
 
@@ -141,58 +141,58 @@ This allows continuous monitoring of network stability during remote operation.
 
 The media/ directory contains working demonstrations of:
 
-Master-to-slave synchronized motion
+- Master-to-slave synchronized motion
 
-Multi-axis teleoperation
+- Multi-axis teleoperation
 
-Real-time response behavior
+- Real-time response behavior
 
 ---
 ## 🎯 Applications
 
 This architecture is designed for scalability into:
 
-Remote surgical assistance systems
+- Remote surgical assistance systems
 
-Hazardous material manipulation
+- Hazardous material manipulation
 
-Bomb disposal robotics
+- Bomb disposal robotics
 
-Space or underwater teleoperation
+- Space or underwater teleoperation
 
-Remote industrial precision control
+- Remote industrial precision control
 
-Training simulators
+- Training simulators
 
 ---
 ## 🔬 Engineering Highlights
 
-Deterministic low-level servo control
+- Deterministic low-level servo control
 
-Microcontroller–SBC hybrid architecture
+- Microcontroller–SBC hybrid architecture
 
-Bidirectional data synchronization
+- Bidirectional data synchronization
 
-Force-triggered reflex safety logic
+- Force-triggered reflex safety logic
 
-Modular communication stack
+- Modular communication stack
 
-Network-aware teleoperation framework
+- Network-aware teleoperation framework
 
 ---
 ## 🔮 Future Expansion
 
-Stereo vision integration
+- Stereo vision integration
 
-Predictive motion smoothing
+- Predictive motion smoothing
 
-AI-assisted control stabilization
+- AI-assisted control stabilization
 
-Adaptive latency compensation
+- Adaptive latency compensation
 
-Autonomous subtask handling
+- Autonomous subtask handling
 
-ROS2-based integration layer
+- ROS2-based integration layer
 
 ---
 ## 👨‍💻 Author
