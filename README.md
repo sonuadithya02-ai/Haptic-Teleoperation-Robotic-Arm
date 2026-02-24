@@ -1,13 +1,12 @@
-**Haptic Teleoperation Robotic Arm
-Real-Time Master–Slave Robotic Control System with Bidirectional Feedback
+#Haptic Teleoperation Robotic Arm
+###Real-Time Master–Slave Robotic Control System with Bidirectional Feedback
 
 A low-latency, internet-enabled teleoperation system designed for precision remote manipulation in surgical, hazardous, and high-risk environments.
 
 This project demonstrates a full-stack robotics architecture integrating embedded systems, real-time communication, force feedback safety logic, and WebRTC-based monitoring.
 
---
-
-🚀 *Overview
+---
+##🚀 Overview
 
 This system implements a real-time master–slave robotic architecture where human hand movements are captured, transmitted over a network, and replicated by a remote robotic arm with synchronized feedback.
 
@@ -25,9 +24,8 @@ Web-based monitoring dashboard
 
 The design prioritizes responsiveness, stability, and modular scalability.
 
---
-
-🧠 *System Architecture
+---
+##🧠 System Architecture
 Operator (Master)
    ↓
 ESP32 + ADS1115 (Motion Capture)
@@ -42,10 +40,9 @@ ESP32 (Actuation Control)
    ↓
 Robotic Arm (MG996R + Stepper)
 
---
-
-⚙️ *Core Components
-🔹 Master Side
+---
+##⚙️ Core Components
+###🔹 Master Side
 
 Precision potentiometer-based motion sensing
 
@@ -57,7 +54,7 @@ MG90S servo-based haptic feedback mechanism
 
 Raspberry Pi for network communication
 
-🔹 Slave Side
+###🔹 Slave Side
 
 MG996R high-torque servo actuators
 
@@ -69,7 +66,7 @@ ESP32 for low-level control
 
 Raspberry Pi as communication bridge
 
-🔁 Communication Layer
+###🔁 Communication Layer
 
 WebRTC-based peer-to-peer data channel
 
@@ -83,9 +80,8 @@ Sequence-based loss detection
 
 The system enforces packet freshness to prevent motion queuing and ensures immediate response to operator input.
 
---
-
-🛡 *Safety & Control Logic
+---
+##🛡 Safety & Control Logic
 
 The platform implements a force-based safety mechanism:
 
@@ -101,9 +97,8 @@ Manual confirmation required for reactivation
 
 This architecture mimics reflex-based safety systems used in advanced teleoperation environments.
 
---
-
-📊 *Real-Time Metrics
+---
+##📊 Real-Time Metrics
 
 The WebRTC dashboard provides:
 
@@ -117,11 +112,10 @@ ICE connection state
 
 This allows continuous monitoring of network stability during remote operation.
 
---
+---
+##📂 Repository Structure
 
-📂 *Repository Structure
-
-'''
+```text
 .
 ├── firmware/
 │   ├── master_esp32/
@@ -136,11 +130,10 @@ This allows continuous monitoring of network stability during remote operation.
 │
 └── media/
 
-'''
+```
 
---
-
-🎥 *Demonstration
+---
+##🎥 Demonstration
 
 The media/ directory contains working demonstrations of:
 
@@ -150,9 +143,8 @@ Multi-axis teleoperation
 
 Real-time response behavior
 
---
-
-🎯 *Applications
+---
+##🎯 Applications
 
 This architecture is designed for scalability into:
 
@@ -168,9 +160,8 @@ Remote industrial precision control
 
 Training simulators
 
---
-
-🔬 *Engineering Highlights
+---
+##🔬 Engineering Highlights
 
 Deterministic low-level servo control
 
@@ -184,9 +175,8 @@ Modular communication stack
 
 Network-aware teleoperation framework
 
---
-
-🔮 *Future Expansion
+---
+##🔮 Future Expansion
 
 Stereo vision integration
 
@@ -200,9 +190,8 @@ Autonomous subtask handling
 
 ROS2-based integration layer
 
---
-
-👨‍💻 *Author
+---
+##👨‍💻 Author
 
 Molanguru Sonu Adithya
 Embedded Systems & Robotics Engineer
