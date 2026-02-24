@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WebRTC UART Dashboard</title>
+  <style>
+    body { font-family: system-ui, Arial; margin: 16px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; min-width: 220px; flex: 1; }
+    .ok { color: #0a7; font-weight: 700; }
+    .bad { color: #c00; font-weight: 700; }
+    .small { font-size: 12px; color: #555; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    input { padding: 8px; border: 1px solid #ddd; border-radius: 8px; min-width: 380px; }
+    button { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; background: #fff; cursor: pointer; }
+    .pill { display:inline-block; padding:2px 8px; border:1px solid #ddd; border-radius:999px; font-size:12px; margin-left:6px;}
+    pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
+    .panel { border:1px solid #eee; border-radius:10px; overflow:auto; }
+    .toolbar { margin-top: 14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .twocol { display:grid; grid-template-columns: 1fr; gap:12px; margin-top:12px; }
+    @media (min-width: 1000px) { .twocol { grid-template-columns: 1fr 1fr; } }
+    .rawbox { max-height: 62vh; padding: 12px; }
+    .metricGrid { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top: 8px; }
+    .metric { border: 1px solid #eee; border-radius: 10px; padding: 10px; }
+    .metric .v { font-size: 20px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h2>WebRTC UART Dashboard <span class="pill mono">CONTROL / EVENT / METRIC</span></h2>
+
+  <div class="row">
+    <div class="card">
+      <div class="small">Connection</div>
+      <div id="conn" class="bad">DISCONNECTED</div>
+      <div class="small mono" id="connDetail"></div>
+      <div class="small" style="margin-top:8px;">
+        Auto-connects and sends <span class="pill mono">DASHBOARD</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="small">Metrics (Peer A)</div>
+      <div class="metricGrid">
+        <div class="metric"><div class="small">RTT</div><div id="a_rtt" class="v">—</div></div>
+        <div class="metric"><div class="small">DC TX / RX</div><div id="a_rate" class="v">—</div></div>
+        <div class="metric"><div class="small">ICE</div><div id="a_ice" class="v">—</div></div>
+        <div class="metric"><div class="small">EVENT Loss</div><div id="a_loss" class="v">—</div></div>
+      </div>
+      <div class="small" id="a_meta" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="small">Metrics (Peer B)</div>
+      <div class="metricGrid">
+        <div class="metric"><div class="small">RTT</div><div id="b_rtt" class="v">—</div></div>
+        <div class="metric"><div class="small">DC TX / RX</div><div id="b_rate" class="v">—</div></div>
+        <div class="metric"><div class="small">ICE</div><div id="b_ice" class="v">—</div></div>
+        <div class="metric"><div class="small">CONTROL Loss</div><div id="b_loss" class="v">—</div></div>
+      </div>
+      <div class="small" id="b_meta" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="small">Packets received</div>
+      <div id="count" style="font-size:22px;font-weight:700;">0</div>
+      <div class="small">Keeping last <span id="maxLabel"></span> messages</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <label class="small">WS URL:</label>
+    <input id="wsUrl" value="wss://signal.mkre.me" />
+    <button id="reconnectBtn">Reconnect</button>
+    <button id="clearBtn">Clear</button>
+    <label class="small">Raw filter:</label>
+    <input id="filter" placeholder='e.g. CONTROL | EVENT | METRIC | "payload":"P," | BLOCK' />
+  </div>
+
+  <div class="twocol">
+    <div class="panel">
+      <div style="padding:10px; border-bottom:1px solid #eee;" class="small">
+        Live raw stream (newest first)
+      </div>
+      <div id="stream" class="rawbox mono"></div>
+    </div>
+
+    <div class="panel">
+      <div style="padding:10px; border-bottom:1px solid #eee;" class="small">
+        RTT graph
+      </div>
+      <div class="rawbox">
+        <div class="small" style="margin-bottom:8px;">Peer A (solid) • Peer B (dashed)</div>
+        <canvas id="rttCanvas" style="width:100%; height:100%;" height="260"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let ws = null;
+    let count = 0;
+
+    const MAX_KEEP = 700;
+    const items = [];
+
+    const elConn = document.getElementById("conn");
+    const elConnDetail = document.getElementById("connDetail");
+    const elCount = document.getElementById("count");
+    const elMaxLabel = document.getElementById("maxLabel");
+    const elWsUrl = document.getElementById("wsUrl");
+    const elStream = document.getElementById("stream");
+    const elRttCanvas = document.getElementById("rttCanvas");
+    const rttCtx = elRttCanvas.getContext("2d");
+    const elFilter = document.getElementById("filter");
+
+    const RTT_MAX_POINTS = 240;
+    const rttSeries = {
+      A: [], // {t:number(ms since epoch), v:number}
+      B: [],
+    };
+
+    const A = {
+      rtt: document.getElementById("a_rtt"),
+      rate: document.getElementById("a_rate"),
+      ice: document.getElementById("a_ice"),
+      loss: document.getElementById("a_loss"),
+      meta: document.getElementById("a_meta"),
+    };
+    const B = {
+      rtt: document.getElementById("b_rtt"),
+      rate: document.getElementById("b_rate"),
+      ice: document.getElementById("b_ice"),
+      loss: document.getElementById("b_loss"),
+      meta: document.getElementById("b_meta"),
+    };
+
+    elMaxLabel.textContent = String(MAX_KEEP);
+
+    function setConn(state, detail="") {
+      elConn.textContent = state;
+      elConn.className = (state === "CONNECTED") ? "ok" : "bad";
+      elConnDetail.textContent = detail;
+    }
+
+    function nowLocal() {
+      return new Date().toLocaleTimeString();
+    }
+
+    function safePretty(raw) {
+      try { return JSON.stringify(JSON.parse(raw), null, 2); }
+      catch { return raw; }
+    }
+
+    function tryJson(raw) {
+      try { return JSON.parse(raw); } catch { return null; }
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function matchesFilter(raw, q) {
+      if (!q) return true;
+      return raw.toLowerCase().includes(q.toLowerCase());
+    }
+
+    function fmtRtt(v) {
+      if (v === null || v === undefined) return "—";
+      return `${Math.round(v)} ms`;
+    }
+
+    function fmtRate(tx, rx) {
+      const f = (x) => (x === null || x === undefined) ? "—" : `${x.toFixed(1)} kbps`;
+      return `${f(tx)} / ${f(rx)}`;
+    }
+
+    function fmtPct(p) {
+      if (p === null || p === undefined) return "—";
+      return `${p.toFixed(2)}%`;
+    }
+
+    function updateMetricCard(from, obj) {
+      const slot = (from === "A") ? A : (from === "B") ? B : null;
+      if (!slot) return;
+
+      slot.rtt.textContent = fmtRtt(obj.rtt_ms);
+      slot.rate.textContent = fmtRate(obj.dc_tx_kbps, obj.dc_rx_kbps);
+      slot.ice.textContent = obj.iceConnectionState || "—";
+
+      if (from === "A") slot.loss.textContent = fmtPct(obj.event_loss_pct);
+      if (from === "B") slot.loss.textContent = fmtPct(obj.control_loss_pct);
+
+      const bits = [];
+      if (obj.connectionState) bits.push(`pc:${obj.connectionState}`);
+      if (obj.signalingState) bits.push(`sig:${obj.signalingState}`);
+      if (obj.dc_messages_sent != null && obj.dc_messages_recv != null) {
+        bits.push(`dc_msgs:${obj.dc_messages_sent} / ${obj.dc_messages_recv}`);
+      }
+      slot.meta.textContent = bits.join(" • ");
+    }
+
+    function pushRttPoint(from, rttMs) {
+      if (rttMs === null || rttMs === undefined) return;
+      const arr = (from === "A") ? rttSeries.A : (from === "B") ? rttSeries.B : null;
+      if (!arr) return;
+
+      arr.push({ t: Date.now(), v: Number(rttMs) });
+      while (arr.length > RTT_MAX_POINTS) arr.shift();
+    }
+
+    function drawRttGraph() {
+      const w = elRttCanvas.width = elRttCanvas.clientWidth;
+      const h = elRttCanvas.height = 260;
+
+      // Background
+      rttCtx.clearRect(0, 0, w, h);
+      rttCtx.fillStyle = "#fff";
+      rttCtx.fillRect(0, 0, w, h);
+
+      // Axis padding
+      const padL = 44, padR = 12, padT = 10, padB = 26;
+      const iw = Math.max(1, w - padL - padR);
+      const ih = Math.max(1, h - padT - padB);
+
+      const all = [...rttSeries.A, ...rttSeries.B];
+      if (all.length === 0) {
+        rttCtx.fillStyle = "#777";
+        rttCtx.font = "12px system-ui";
+        rttCtx.fillText("Waiting for METRIC webrtc_app RTT…", padL, padT + 14);
+        return;
+      }
+
+      const tMin = Math.min(...all.map(p => p.t));
+      const tMax = Math.max(...all.map(p => p.t));
+      const vMin = Math.min(...all.map(p => p.v));
+      const vMax = Math.max(...all.map(p => p.v));
+      const vPad = Math.max(5, (vMax - vMin) * 0.12);
+      const yMin = Math.max(0, vMin - vPad);
+      const yMax = vMax + vPad;
+      const dt = Math.max(1, tMax - tMin);
+      const dv = Math.max(1, yMax - yMin);
+
+      const x = (t) => padL + ((t - tMin) / dt) * iw;
+      const y = (v) => padT + (1 - ((v - yMin) / dv)) * ih;
+
+      // Grid (light)
+      rttCtx.strokeStyle = "#eee";
+      rttCtx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const yy = padT + (ih * i) / 4;
+        rttCtx.beginPath();
+        rttCtx.moveTo(padL, yy);
+        rttCtx.lineTo(padL + iw, yy);
+        rttCtx.stroke();
+      }
+
+      // Y labels
+      rttCtx.fillStyle = "#666";
+      rttCtx.font = "12px system-ui";
+      const yTicks = 4;
+      for (let i = 0; i <= yTicks; i++) {
+        const v = yMax - (dv * i) / yTicks;
+        const yy = y(v);
+        rttCtx.fillText(`${Math.round(v)} ms`, 6, yy + 4);
+      }
+
+      function plot(arr, dashed) {
+        if (arr.length < 2) return;
+        rttCtx.strokeStyle = "#111";
+        rttCtx.lineWidth = 2;
+        rttCtx.setLineDash(dashed ? [6, 4] : []);
+        rttCtx.beginPath();
+        rttCtx.moveTo(x(arr[0].t), y(arr[0].v));
+        for (let i = 1; i < arr.length; i++) rttCtx.lineTo(x(arr[i].t), y(arr[i].v));
+        rttCtx.stroke();
+        rttCtx.setLineDash([]);
+      }
+
+      plot(rttSeries.A, false);
+      plot(rttSeries.B, true);
+    }
+
+    function render() {
+      const q = elFilter.value.trim();
+      elStream.innerHTML = "";
+
+      for (let i = items.length - 1; i >= 0; i--) {
+        const it = items[i];
+        if (!matchesFilter(it.raw, q)) continue;
+
+        const o = tryJson(it.raw);
+        const type = o?.type ?? "TEXT";
+        const from = o?.from ?? "—";
+
+        const line = document.createElement("div");
+        line.style.padding = "8px 10px";
+        line.style.borderBottom = "1px solid #f2f2f2";
+        line.style.cursor = "pointer";
+
+        line.innerHTML = `
+          <div class="small">
+            ${escapeHtml(it.ts)} 
+            <span class="pill mono">${escapeHtml(type)}</span>
+            <span class="pill mono">from:${escapeHtml(from)}</span>
+          </div>
+          <pre class="mono" style="margin-top:6px">${escapeHtml(safePretty(it.raw))}</pre>
+        `;
+
+        line.onclick = () => {};
+        elStream.appendChild(line);
+      }
+    }
+
+    function push(raw) {
+      items.push({ raw, ts: nowLocal() });
+      while (items.length > MAX_KEEP) items.shift();
+
+      count += 1;
+      elCount.textContent = String(count);
+
+      const o = tryJson(raw);
+      if (o && o.type === "METRIC" && o.metric === "webrtc_app") {
+        updateMetricCard(o.from, o);
+        pushRttPoint(o.from, o.rtt_ms);
+        drawRttGraph();
+      }
+
+      render();
+    }
+
+    function connect() {
+      const url = elWsUrl.value.trim();
+      if (!url) return;
+
+      if (ws) try { ws.close(); } catch {}
+      setConn("CONNECTING", url);
+
+      try {
+        ws = new WebSocket(url);
+      } catch {
+        setConn("DISCONNECTED", "Invalid WS URL");
+        return;
+      }
+
+      ws.onopen = () => {
+        setConn("CONNECTED", url);
+        ws.send("DASHBOARD");
+      };
+
+      ws.onmessage = (ev) => {
+        if (typeof ev.data === "string") push(ev.data);
+        else push("[BINARY FRAME]");
+      };
+
+      ws.onclose = () => setConn("DISCONNECTED", "closed");
+      ws.onerror = () => setConn("DISCONNECTED", "error");
+    }
+
+    document.getElementById("reconnectBtn").onclick = connect;
+    document.getElementById("clearBtn").onclick = () => {
+      items.length = 0;
+      count = 0;
+      elCount.textContent = "0";
+      rttSeries.A.length = 0;
+      rttSeries.B.length = 0;
+      drawRttGraph();
+      A.rtt.textContent = A.rate.textContent = A.ice.textContent = A.loss.textContent = "—";
+      A.meta.textContent = "";
+      B.rtt.textContent = B.rate.textContent = B.ice.textContent = B.loss.textContent = "—";
+      B.meta.textContent = "";
+      render();
+    };
+    elFilter.addEventListener("input", render);
+
+    // AUTO-CONNECT ON LOAD
+    connect();
+    drawRttGraph();
+  </script>
+</body>
+</html>
